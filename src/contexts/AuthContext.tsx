@@ -4,7 +4,8 @@ import {
   AccountInfo,
   AuthenticationResult,
   EventType,
-  EventMessage
+  EventMessage,
+  InteractionStatus
 } from "@azure/msal-browser";
 import { msalInstance, loginRequest, graphConfig } from "@/lib/auth-config";
 import { useRouter, usePathname } from "next/navigation";
@@ -40,133 +41,127 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const pathname = usePathname();
 
   useEffect(() => {
-    const initializeMsal = async () => {
+    const initAuth = async () => {
       try {
+        console.log("Iniciando autenticación...");
+        
+        // Esperar a que MSAL esté listo
         await msalInstance.initialize();
         
-        // Manejar el redirect
-        try {
-          const response = await msalInstance.handleRedirectPromise();
-          if (response && response.account) {
-            console.log("Respuesta de redirect recibida:", response);
-            await handleAuthResponse(response);
-            return; // Importante: salir aquí para evitar procesar dos veces
-          }
-        } catch (error) {
-          console.error("Error manejando redirect:", error);
-        }
-
-        // Si no hay redirect, verificar si hay sesión activa
-        const accounts = msalInstance.getAllAccounts();
-        if (accounts.length > 0) {
-          console.log("Cuenta encontrada:", accounts[0]);
-          setUser(accounts[0]);
-          await checkGroupMembership(accounts[0]);
-        }
+        // Manejar la respuesta del redirect
+        const response = await msalInstance.handleRedirectPromise();
+        console.log("Respuesta de redirect:", response);
         
+        if (response && response.account) {
+          console.log("Usuario autenticado desde redirect");
+          setUser(response.account);
+          
+          // Guardar en localStorage para persistencia
+          localStorage.setItem('user', JSON.stringify({
+            email: response.account.username,
+            isAuthorized: false // Se verificará después
+          }));
+          
+          // Verificar grupos
+          const isAuth = await checkGroupMembership(response.account);
+          if (isAuth) {
+            // Actualizar localStorage con autorización
+            localStorage.setItem('user', JSON.stringify({
+              email: response.account.username,
+              isAuthorized: true
+            }));
+            router.push('/dashboard');
+          }
+        } else {
+          // Verificar si hay una sesión activa
+          const accounts = msalInstance.getAllAccounts();
+          console.log("Cuentas encontradas:", accounts.length);
+          
+          if (accounts.length > 0) {
+            const account = accounts[0];
+            setUser(account);
+            
+            // Verificar si ya tenemos autorización guardada
+            const savedUser = localStorage.getItem('user');
+            if (savedUser) {
+              const parsed = JSON.parse(savedUser);
+              if (parsed.isAuthorized) {
+                setIsAuthorized(true);
+              } else {
+                await checkGroupMembership(account);
+              }
+            } else {
+              await checkGroupMembership(account);
+            }
+          }
+        }
       } catch (error) {
-        console.error("Error inicializando MSAL:", error);
+        console.error("Error en initAuth:", error);
         setError("Error al inicializar autenticación");
       } finally {
         setIsLoading(false);
       }
     };
 
-    initializeMsal();
-  }, []);
+    initAuth();
+  }, [pathname, router]);
 
-  const handleAuthResponse = async (response: AuthenticationResult) => {
-    console.log("Manejando respuesta de autenticación");
-    if (response.account) {
-      setUser(response.account);
-      const authorized = await checkGroupMembership(response.account);
-      if (authorized) {
-        console.log("Usuario autorizado, redirigiendo a dashboard");
-        router.push('/dashboard');
-      } else {
-        setError("No tienes permisos para acceder a esta aplicación. Debes pertenecer al grupo 'appbip'.");
-        // No hacer logout automático para evitar loops
+  const checkGroupMembership = async (account: AccountInfo): Promise<boolean> => {
+    try {
+      console.log("=== VERIFICANDO MEMBRESÍA DE GRUPOS ===");
+      console.log("Usuario:", account.username);
+      console.log("Group ID buscado:", AUTHORIZED_GROUP_ID);
+      
+      const tokenResponse = await msalInstance.acquireTokenSilent({
+        ...loginRequest,
+        account,
+        forceRefresh: false
+      });
+      
+      console.log("Token obtenido, haciendo llamada a Graph API...");
+
+      const response = await fetch(graphConfig.graphGroupsEndpoint, {
+        headers: {
+          Authorization: `Bearer ${tokenResponse.accessToken}`,
+        },
+      });
+
+      if (!response.ok) {
+        throw new Error(`Graph API error: ${response.status}`);
       }
-    }
-  };
 
-const checkGroupMembership = async (account: AccountInfo): Promise<boolean> => {
-  try {
-    console.log("=== INICIO VERIFICACIÓN DE GRUPOS ===");
-    console.log("Usuario:", account.username);
-    console.log("Group ID esperado:", AUTHORIZED_GROUP_ID);
-    
-    // Verificar que tenemos el GROUP_ID
-    if (!AUTHORIZED_GROUP_ID) {
-      console.error("❌ ERROR: AUTHORIZED_GROUP_ID no está definido!");
+      const data = await response.json();
+      console.log("Grupos encontrados:", data.value.length);
+      
+      let isMember = false;
+      data.value.forEach((group: any) => {
+        console.log(`- ${group.displayName} (${group.id})`);
+        if (group.id === AUTHORIZED_GROUP_ID) {
+          isMember = true;
+          console.log("✅ Usuario es miembro del grupo appbip!");
+        }
+      });
+      
+      setIsAuthorized(isMember);
+      return isMember;
+      
+    } catch (error) {
+      console.error("Error verificando grupos:", error);
+      
+      // Si falla, intentar renovar el token
+      try {
+        await msalInstance.acquireTokenRedirect(loginRequest);
+      } catch (e) {
+        console.error("Error obteniendo token:", e);
+      }
+      
       return false;
     }
-    
-    const tokenResponse = await msalInstance.acquireTokenSilent({
-      ...loginRequest,
-      account,
-    });
-    
-    console.log("✅ Token obtenido exitosamente");
-
-    const response = await fetch(graphConfig.graphGroupsEndpoint, {
-      headers: {
-        Authorization: `Bearer ${tokenResponse.accessToken}`,
-      },
-    });
-
-    console.log("Respuesta de Graph API - Status:", response.status);
-
-    if (!response.ok) {
-      const errorText = await response.text();
-      console.error("❌ Error de Graph API:", errorText);
-      throw new Error("Error al verificar grupos");
-    }
-
-    const data = await response.json();
-    console.log("Grupos encontrados:", data.value.length);
-    console.log("Lista completa de grupos:");
-    
-    data.value.forEach((group: any, index: number) => {
-      console.log(`${index + 1}. ${group.displayName || 'Sin nombre'}`);
-      console.log(`   ID: ${group.id}`);
-      console.log(`   Tipo: ${group['@odata.type'] || 'No especificado'}`);
-    });
-    
-    const isMember = data.value.some((group: any) => {
-      const match = group.id === AUTHORIZED_GROUP_ID;
-      if (match) {
-        console.log("✅ MATCH ENCONTRADO con grupo:", group.displayName);
-      }
-      return match;
-    });
-    
-    console.log("¿Es miembro del grupo autorizado?:", isMember ? "✅ SÍ" : "❌ NO");
-    console.log("=== FIN VERIFICACIÓN ===");
-    
-    setIsAuthorized(isMember);
-    return isMember;
-    
-  } catch (error) {
-    console.error("❌ ERROR en checkGroupMembership:", error);
-    
-    // Si falla, intentar adquirir token con interacción
-    try {
-      await msalInstance.acquireTokenRedirect(loginRequest);
-    } catch (redirectError) {
-      console.error("❌ Error al solicitar token:", redirectError);
-      setError("Error al verificar permisos");
-    }
-    
-    return false;
-  }
-};
+  };
 
   const login = async () => {
     try {
       setError(null);
-      // Limpiar cualquier estado anterior
-      msalInstance.clearCache();
       await msalInstance.loginRedirect(loginRequest);
     } catch (error) {
       console.error("Error en login:", error);
@@ -175,17 +170,23 @@ const checkGroupMembership = async (account: AccountInfo): Promise<boolean> => {
   };
 
   const logout = () => {
+    localStorage.removeItem('user');
     const account = msalInstance.getAllAccounts()[0];
     if (account) {
       msalInstance.logoutRedirect({ account });
     }
-    setUser(null);
-    setIsAuthorized(false);
   };
 
-  // No renderizar nada mientras se está en el callback
+  // No mostrar nada mientras se procesa el callback
   if (pathname === '/auth/callback' && isLoading) {
-    return <div>Procesando autenticación...</div>;
+    return (
+      <div className="flex min-h-screen items-center justify-center">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-gray-900 mx-auto"></div>
+          <p className="mt-4">Procesando autenticación...</p>
+        </div>
+      </div>
+    );
   }
 
   return (
