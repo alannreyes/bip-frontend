@@ -110,6 +110,22 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     try {
       console.log("=== VERIFICANDO MEMBRESÍA DE GRUPOS ===");
       console.log("Usuario:", account.username);
+      
+      // TEMPORAL: Auto-aprobar usuarios @efc.com.pe
+      if (account.username.toLowerCase().endsWith('@efc.com.pe')) {
+        console.log("✅ Usuario de EFC - Acceso concedido automáticamente (TEMPORAL)");
+        setIsAuthorized(true);
+        
+        // Guardar en localStorage
+        localStorage.setItem('user', JSON.stringify({
+          email: account.username,
+          isAuthorized: true
+        }));
+        
+        return true;
+      }
+      
+      /* CÓDIGO ORIGINAL COMENTADO TEMPORALMENTE - Descomentar cuando se resuelva el problema de Graph API
       console.log("Group ID buscado:", AUTHORIZED_GROUP_ID);
       
       const tokenResponse = await msalInstance.acquireTokenSilent({
@@ -144,6 +160,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       
       setIsAuthorized(isMember);
       return isMember;
+      */
+      
+      // Si no es @efc.com.pe, denegar acceso
+      console.log("❌ Usuario no es de EFC");
+      setIsAuthorized(false);
+      return false;
       
     } catch (error) {
       console.error("Error verificando grupos:", error);
