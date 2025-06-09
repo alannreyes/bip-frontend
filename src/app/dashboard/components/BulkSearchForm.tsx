@@ -12,57 +12,62 @@ import { Button } from "@/components/ui/button";
 import { z } from "zod";
 import { useState } from "react";
 
+type BulkFormData = z.infer<typeof bulkSchema>;
+
 export default function BulkSearchForm() {
-  const { register, handleSubmit, formState: { errors } } = useForm<z.infer<typeof bulkSchema>>({
+  const { register, handleSubmit, formState: { errors } } = useForm<BulkFormData>({
     resolver: zodResolver(bulkSchema),
-    defaultValues: { limit: 5, segment: "standard" },
+    defaultValues: { 
+      queries: "",
+      limit: 10,  // Cambiado de 5 a 10 para coincidir con el schema
+      segment: "standard" 
+    },
   });
   
   const { loading, results, error, search, setResults } = useProductSearch();
   const [progress, setProgress] = useState(0);
   const [isSearching, setIsSearching] = useState(false);
 
-const onSubmit = async (data: any) => {
-  setResults([]);
-  setProgress(0);
-  setIsSearching(true);
-  
-  const lines = data.queries.split("\n").filter(Boolean).slice(0, 500);
-  let allResults: any[] = [];
-  
-  for (let i = 0; i < lines.length; i++) {
-    try {
-      const searchResults = await search({ 
-        query: lines[i], 
-        limit: data.limit, 
-        segment: data.segment 
-      });
+  const onSubmit = async (data: BulkFormData) => {
+    setResults([]);
+    setProgress(0);
+    setIsSearching(true);
+    
+    const lines = data.queries.split("\n").filter(Boolean).slice(0, 500);
+    let allResults: any[] = [];
+    
+    for (let i = 0; i < lines.length; i++) {
+      try {
+        const searchResults = await search({ 
+          query: lines[i], 
+          limit: data.limit, 
+          segment: data.segment 
+        });
+        
+        // Agregar la consulta a cada resultado
+        const resultsWithQuery = searchResults.map((result: any) => ({
+          consulta: lines[i], // Primera columna con el término buscado
+          ...result
+        }));
+        
+        allResults = [...allResults, ...resultsWithQuery];
+        
+      } catch (error) {
+        console.error(`Error buscando: ${lines[i]}`, error);
+      }
       
-      // Agregar la consulta a cada resultado
-      const resultsWithQuery = searchResults.map((result: any) => ({
-        consulta: lines[i], // Primera columna con el término buscado
-        ...result
-      }));
-      
-      allResults = [...allResults, ...resultsWithQuery];
-      
-    } catch (error) {
-      console.error(`Error buscando: ${lines[i]}`, error);
+      setProgress(Math.round(((i + 1) / lines.length) * 100));
     }
     
-    setProgress(Math.round(((i + 1) / lines.length) * 100));
-  }
-  
-  setResults(allResults);
-  setIsSearching(false);
-};
+    setResults(allResults);
+    setIsSearching(false);
+  };
 
   return (
     <form
       onSubmit={handleSubmit(onSubmit)}
       className="bg-white shadow-sm rounded-xl p-8 w-full space-y-6 border border-gray-100"
     >
-            
       <div>
         <label className="block text-sm font-semibold text-gray-700 mb-1" htmlFor="queries">
           Términos de búsqueda (máx 500 líneas)
@@ -89,6 +94,7 @@ const onSubmit = async (data: any) => {
           className="rounded-lg border-gray-300 focus:border-[#8DC63F] focus:ring-[#8DC63F]"
           {...register("limit", { valueAsNumber: true })}
         />
+        {errors.limit && <p className="text-red-500 text-xs mt-1">{errors.limit.message}</p>}
       </div>
       
       <div>
@@ -99,7 +105,6 @@ const onSubmit = async (data: any) => {
           id="segment"
           className="rounded-lg border-gray-300 focus:border-[#8DC63F] focus:ring-[#8DC63F] w-full px-3 py-2"
           {...register("segment")}
-          defaultValue="standard"
         >
           <option value="premium">Premium</option>
           <option value="economy">Economy</option>
