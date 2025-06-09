@@ -17,30 +17,52 @@ export default function BulkSearchForm() {
     resolver: zodResolver(bulkSchema),
     defaultValues: { limit: 5, segment: "standard" },
   });
+  
   const { loading, results, error, search, setResults } = useProductSearch();
   const [progress, setProgress] = useState(0);
+  const [isSearching, setIsSearching] = useState(false);
 
-  const onSubmit = async (data: any) => {
-    setResults([]);
-    setProgress(0);
-    const lines = data.queries.split("\n").filter(Boolean).slice(0, 500);
-    let allResults: any[] = [];
-    for (let i = 0; i < lines.length; i++) {
-      await search({ query: lines[i], limit: data.limit, segment: data.segment });
-      setProgress(Math.round(((i + 1) / lines.length) * 100));
-      // Aquí deberías acumular los resultados de cada búsqueda
-      // allResults = [...allResults, ...resultadosDeEstaBusqueda]
+const onSubmit = async (data: any) => {
+  setResults([]);
+  setProgress(0);
+  setIsSearching(true);
+  
+  const lines = data.queries.split("\n").filter(Boolean).slice(0, 500);
+  let allResults: any[] = [];
+  
+  for (let i = 0; i < lines.length; i++) {
+    try {
+      const searchResults = await search({ 
+        query: lines[i], 
+        limit: data.limit, 
+        segment: data.segment 
+      });
+      
+      // Agregar la consulta a cada resultado
+      const resultsWithQuery = searchResults.map((result: any) => ({
+        consulta: lines[i], // Primera columna con el término buscado
+        ...result
+      }));
+      
+      allResults = [...allResults, ...resultsWithQuery];
+      
+    } catch (error) {
+      console.error(`Error buscando: ${lines[i]}`, error);
     }
-    // setResults(allResults);
-  };
+    
+    setProgress(Math.round(((i + 1) / lines.length) * 100));
+  }
+  
+  setResults(allResults);
+  setIsSearching(false);
+};
 
   return (
     <form
       onSubmit={handleSubmit(onSubmit)}
-      className="bg-white shadow-sm rounded-xl p-8 max-w-xl mx-auto space-y-6 border border-gray-100"
+      className="bg-white shadow-sm rounded-xl p-8 w-full space-y-6 border border-gray-100"
     >
-      <h2 className="text-2xl font-bold text-[#8DC63F] mb-4">Búsqueda masiva de productos</h2>
-      
+            
       <div>
         <label className="block text-sm font-semibold text-gray-700 mb-1" htmlFor="queries">
           Términos de búsqueda (máx 500 líneas)
@@ -54,7 +76,7 @@ export default function BulkSearchForm() {
         />
         {errors.queries && <p className="text-red-500 text-xs mt-1">{errors.queries.message}</p>}
       </div>
-
+      
       <div>
         <label className="block text-sm font-semibold text-gray-700 mb-1" htmlFor="limit">
           Cantidad de alternativas
@@ -68,7 +90,7 @@ export default function BulkSearchForm() {
           {...register("limit", { valueAsNumber: true })}
         />
       </div>
-
+      
       <div>
         <label className="block text-sm font-semibold text-gray-700 mb-1" htmlFor="segment">
           Segmento
@@ -84,18 +106,23 @@ export default function BulkSearchForm() {
           <option value="standard">Standard</option>
         </select>
       </div>
-
+      
       <Button
         type="submit"
-        disabled={loading}
+        disabled={isSearching}
         className="bg-[#8DC63F] hover:bg-[#6fa52e] text-white font-semibold rounded-lg px-6 py-2"
       >
-        Buscar
+        {isSearching ? "Buscando..." : "Buscar"}
       </Button>
-      {loading && <ProgressBar progress={progress} />}
+      
+      {isSearching && <ProgressBar progress={progress} />}
       {error && <p className="text-red-500">{error}</p>}
-      {results.length > 0 && (
+      
+      {results.length > 0 && !isSearching && (
         <>
+          <div className="text-sm text-gray-600">
+            Total de resultados: {results.length}
+          </div>
           <ExportButton data={results} />
           <ResultsTable data={results} />
         </>

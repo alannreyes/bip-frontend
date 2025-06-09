@@ -1,38 +1,56 @@
 "use client";
-import { useForm } from "react-hook-form";
-import { zodResolver } from "@hookform/resolvers/zod";
-import { loginSchema } from "../../lib/validation";
-import { useAuth } from "../../hooks/useAuth";
-import { Input } from "@/components/ui/input";
+import { useAuth } from "@/contexts/AuthContext";
 import { Button } from "@/components/ui/button";
-import { z } from "zod";
+import { useEffect } from "react";
+import { useRouter } from "next/navigation";
 
 export default function LoginPage() {
-  const { login, user } = useAuth();
-  const { register, handleSubmit, formState: { errors } } = useForm<z.infer<typeof loginSchema>>({
-    resolver: zodResolver(loginSchema),
-  });
+  const { login, isAuthenticated, isAuthorized, isLoading, error } = useAuth();
+  const router = useRouter();
 
-  if (user === undefined) {
-    return <div>Cargando...</div>;
-  }
+  useEffect(() => {
+    if (isAuthenticated && isAuthorized) {
+      router.push('/dashboard');
+    }
+  }, [isAuthenticated, isAuthorized, router]);
 
-  if (user) {
-    if (typeof window !== "undefined") window.location.href = "/dashboard";
-    return null;
+  if (isLoading) {
+    return (
+      <div className="flex min-h-screen items-center justify-center">
+        <p className="text-gray-600">Verificando sesión...</p>
+      </div>
+    );
   }
 
   return (
-    <div className="flex min-h-screen items-center justify-center bg-white">
-      <form
-        onSubmit={handleSubmit(data => login(data.email))}
-        className="bg-white p-8 rounded shadow-md w-full max-w-sm"
-      >
-        <h1 className="text-2xl font-bold mb-6 text-primary">Iniciar sesión</h1>
-        <Input placeholder="Email" {...register("email")}/>
-        {errors.email && <p className="text-red-500">{errors.email.message}</p>}
-        <Button type="submit" className="w-full mt-4">Entrar</Button>
-      </form>
+    <div className="flex min-h-screen items-center justify-center bg-gray-50">
+      <div className="w-full max-w-md">
+        <div className="bg-white p-8 rounded-lg shadow-md text-center">
+          <h1 className="text-2xl font-bold text-gray-900 mb-2">
+            Buscador Inteligente de Productos
+          </h1>
+          <p className="text-sm text-gray-600 mb-6">
+            Inicia sesión con tu cuenta corporativa
+          </p>
+          
+          {error && (
+            <div className="mb-4 p-3 bg-red-50 border border-red-200 rounded text-sm text-red-700">
+              {error}
+            </div>
+          )}
+          
+          <Button onClick={login} className="w-full">
+            Iniciar sesión con Microsoft
+          </Button>
+          
+          <div className="mt-6 p-4 bg-blue-50 rounded-md border border-blue-200">
+            <p className="text-xs text-blue-800">
+              Solo usuarios del grupo <code className="font-mono">appbip</code> tienen acceso.
+              Para solicitar acceso, contacta a IT.
+            </p>
+          </div>
+        </div>
+      </div>
     </div>
   );
 }

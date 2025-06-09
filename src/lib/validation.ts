@@ -6,6 +6,12 @@ export const loginSchema = z.object({
   }),
 });
 
+export const userSchema = z.object({
+  email: z.string().email(),
+  groups: z.array(z.string()).optional(),
+  isAuthorized: z.boolean(),
+});
+
 export const searchSchema = z.object({
   query: z.string().min(1, "Campo requerido"),
   limit: z.number().min(1).max(100).default(10),

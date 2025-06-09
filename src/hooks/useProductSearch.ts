@@ -11,12 +11,16 @@ export function useProductSearch() {
     setError(null);
     try {
       const { data } = await api.post("/search", params);
-      setResults(Array.isArray(data) ? data : [data]);
+      const newResults = Array.isArray(data) ? data : [data];
+      setResults(newResults);
+      return newResults; // IMPORTANTE: Retornar los resultados
     } catch (e: any) {
       setError("Error en la búsqueda");
+      return []; // Retornar array vacío si hay error
+    } finally {
+      setLoading(false);
     }
-    setLoading(false);
   };
 
   return { loading, results, error, search, setResults };
-} 
+}
