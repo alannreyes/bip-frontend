@@ -9,17 +9,21 @@ import ProgressBar from "./ProgressBar";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Button } from "@/components/ui/button";
-import { z } from "zod";
 import { useState } from "react";
 
-type BulkFormData = z.infer<typeof bulkSchema>;
+// Define el tipo manualmente en lugar de inferirlo
+interface BulkFormData {
+  queries: string;
+  limit: number;
+  segment: "premium" | "economy" | "standard";
+}
 
 export default function BulkSearchForm() {
   const { register, handleSubmit, formState: { errors } } = useForm<BulkFormData>({
-    resolver: zodResolver(bulkSchema),
+    resolver: zodResolver(bulkSchema) as any, // Forzar el tipo para evitar conflicto
     defaultValues: { 
       queries: "",
-      limit: 10,  // Cambiado de 5 a 10 para coincidir con el schema
+      limit: 10,
       segment: "standard" 
     },
   });
