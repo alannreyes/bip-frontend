@@ -19,21 +19,6 @@ export default function DashboardPage() {
   
   return (
     <div className="min-h-screen bg-gray-50">
-      {/* Header simplificado sin logo duplicado */}
-      <header className="bg-white shadow-sm border-b">
-        <div className="px-6 py-4 flex justify-between items-center">
-          <div>
-            <h1 className="text-xl font-semibold text-gray-900">
-              Buscador Inteligente de Productos
-            </h1>
-            <p className="text-xs text-gray-500">Sistema de búsqueda semántica</p>
-          </div>
-          <Button variant="outline" onClick={logout} className="text-sm">
-            Cerrar sesión
-          </Button>
-        </div>
-      </header>
-      
       {/* Contenido principal - usa todo el ancho */}
       <div className="px-6 py-8">
         <Tabs defaultValue="individual" className="w-full">

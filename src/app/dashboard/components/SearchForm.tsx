@@ -58,34 +58,36 @@ export default function SearchForm() {
           {errors.query && <p className="text-red-500 text-xs mt-1">{errors.query.message}</p>}
         </div>
         
-        <div>
-          <label className="block text-sm font-semibold text-gray-700 mb-1" htmlFor="limit">
-            Cantidad de alternativas
-          </label>
-          <Input
-            id="limit"
-            type="number"
-            min={1}
-            max={100}
-            className="rounded-lg border-gray-300 focus:border-[#8DC63F] focus:ring-[#8DC63F]"
-            {...register("limit", { valueAsNumber: true })}
-          />
-          {errors.limit && <p className="text-red-500 text-xs mt-1">{errors.limit.message}</p>}
-        </div>
-        
-        <div>
-          <label className="block text-sm font-semibold text-gray-700 mb-1" htmlFor="segment">
-            Segmento
-          </label>
-          <select
-            id="segment"
-            className="rounded-lg border-gray-300 focus:border-[#8DC63F] focus:ring-[#8DC63F] w-full px-3 py-2"
-            {...register("segment")}
-          >
-            <option value="premium">Premium</option>
-            <option value="economy">Economy</option>
-            <option value="standard">Standard</option>
-          </select>
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div>
+            <label className="block text-sm font-semibold text-gray-700 mb-1" htmlFor="limit">
+              Cantidad de alternativas
+            </label>
+            <Input
+              id="limit"
+              type="number"
+              min={1}
+              max={100}
+              className="rounded-lg border-gray-300 focus:border-[#8DC63F] focus:ring-[#8DC63F]"
+              {...register("limit", { valueAsNumber: true })}
+            />
+            {errors.limit && <p className="text-red-500 text-xs mt-1">{errors.limit.message}</p>}
+          </div>
+          
+          <div>
+            <label className="block text-sm font-semibold text-gray-700 mb-1" htmlFor="segment">
+              Segmento
+            </label>
+            <select
+              id="segment"
+              className="rounded-lg border-gray-300 focus:border-[#8DC63F] focus:ring-[#8DC63F] w-full px-3 py-2"
+              {...register("segment")}
+            >
+              <option value="premium">Premium</option>
+              <option value="economy">Economy</option>
+              <option value="standard">Standard</option>
+            </select>
+          </div>
         </div>
         
         <Button
