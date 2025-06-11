@@ -1,5 +1,4 @@
 import { useState } from "react";
-import { api } from "../lib/api";
 
 export function useProductSearch() {
   const [loading, setLoading] = useState(false);
@@ -10,13 +9,27 @@ export function useProductSearch() {
     setLoading(true);
     setError(null);
     try {
-      const { data } = await api.post("/search", params);
+      // Cambiar a usar el proxy local
+      const response = await fetch('/api/proxy-search', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(params),
+      });
+
+      const data = await response.json();
+      
+      if (!response.ok) {
+        throw new Error(data.error || 'Error en la búsqueda');
+      }
+
       const newResults = Array.isArray(data) ? data : [data];
       setResults(newResults);
-      return newResults; // IMPORTANTE: Retornar los resultados
+      return newResults;
     } catch (e: any) {
-      setError("Error en la búsqueda");
-      return []; // Retornar array vacío si hay error
+      setError(e.message || "Error en la búsqueda");
+      return [];
     } finally {
       setLoading(false);
     }
