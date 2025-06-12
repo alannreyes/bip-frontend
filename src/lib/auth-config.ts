@@ -19,7 +19,7 @@ export const msalConfig: Configuration = {
     storeAuthStateInCookie: false,
   },
   system: {
-    allowNativeBroker: false,
+    //allowNativeBroker: false,
     loggerOptions: {
       loggerCallback: (level, message, containsPii) => {
         if (containsPii) return;
