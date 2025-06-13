@@ -21,7 +21,6 @@ export const msalConfig: Configuration = {
     storeAuthStateInCookie: false,
   },
   system: {
-    //allowNativeBroker: false,
     loggerOptions: {
       loggerCallback: (level, message, containsPii) => {
         if (containsPii) return;
@@ -43,28 +42,18 @@ export const graphConfig = {
   graphGroupsEndpoint: "https://graph.microsoft.com/v1.0/me/memberOf",
 };
 
-// Crear una instancia singleton de MSAL solo en el cliente
-let msalInstance: PublicClientApplication | null = null;
+// NO crear instancia de MSAL aquí - se creará en el contexto
+export let msalInstance: PublicClientApplication | null = null;
 
-export function getMsalInstance(): PublicClientApplication {
+// Función para obtener o crear la instancia de MSAL
+export function getMsalInstance(): PublicClientApplication | null {
   if (typeof window === 'undefined') {
-    // En el servidor, devolver un objeto mock
-    return {} as PublicClientApplication;
+    return null;
   }
 
   if (!msalInstance) {
     msalInstance = new PublicClientApplication(msalConfig);
-    
-    // Inicializar MSAL
-    msalInstance.initialize().then(() => {
-      console.log("MSAL inicializado correctamente");
-    }).catch((error) => {
-      console.error("Error inicializando MSAL:", error);
-    });
   }
 
   return msalInstance;
 }
-
-// Exportar para compatibilidad con código existente
-export { getMsalInstance as msalInstance };

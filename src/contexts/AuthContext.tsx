@@ -5,9 +5,10 @@ import {
   AuthenticationResult,
   EventType,
   EventMessage,
-  InteractionStatus
+  InteractionStatus,
+  PublicClientApplication
 } from "@azure/msal-browser";
-import { msalInstance, loginRequest, graphConfig } from "@/lib/auth-config";
+import { getMsalInstance, loginRequest, graphConfig } from "@/lib/auth-config";
 import { useRouter, usePathname } from "next/navigation";
 
 const AUTHORIZED_GROUP_ID = process.env.NEXT_PUBLIC_AUTHORIZED_GROUP_ID!;
@@ -37,6 +38,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [isAuthorized, setIsAuthorized] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [msalInstance, setMsalInstance] = useState<PublicClientApplication | null>(null);
   const router = useRouter();
   const pathname = usePathname();
 
@@ -45,11 +47,21 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       try {
         console.log("Iniciando autenticación...");
         
+        // Obtener instancia de MSAL
+        const instance = getMsalInstance();
+        if (!instance) {
+          console.log("MSAL no disponible en el servidor");
+          setIsLoading(false);
+          return;
+        }
+        
+        setMsalInstance(instance);
+        
         // Esperar a que MSAL esté listo
-        await msalInstance.initialize();
+        await instance.initialize();
         
         // Manejar la respuesta del redirect
-        const response = await msalInstance.handleRedirectPromise();
+        const response = await instance.handleRedirectPromise();
         console.log("Respuesta de redirect:", response);
         
         if (response && response.account) {
@@ -63,7 +75,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           }));
           
           // Verificar grupos
-          const isAuth = await checkGroupMembership(response.account);
+          const isAuth = await checkGroupMembership(response.account, instance);
           if (isAuth) {
             // Actualizar localStorage con autorización
             localStorage.setItem('user', JSON.stringify({
@@ -74,7 +86,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           }
         } else {
           // Verificar si hay una sesión activa
-          const accounts = msalInstance.getAllAccounts();
+          const accounts = instance.getAllAccounts();
           console.log("Cuentas encontradas:", accounts.length);
           
           if (accounts.length > 0) {
@@ -88,10 +100,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
               if (parsed.isAuthorized) {
                 setIsAuthorized(true);
               } else {
-                await checkGroupMembership(account);
+                await checkGroupMembership(account, instance);
               }
             } else {
-              await checkGroupMembership(account);
+              await checkGroupMembership(account, instance);
             }
           }
         }
@@ -106,7 +118,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     initAuth();
   }, [pathname, router]);
 
-  const checkGroupMembership = async (account: AccountInfo): Promise<boolean> => {
+  const checkGroupMembership = async (account: AccountInfo, instance: PublicClientApplication): Promise<boolean> => {
     try {
       console.log("=== VERIFICANDO MEMBRESÍA DE GRUPOS ===");
       console.log("Usuario:", account.username);
@@ -125,43 +137,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         return true;
       }
       
-      /* CÓDIGO ORIGINAL COMENTADO TEMPORALMENTE - Descomentar cuando se resuelva el problema de Graph API
-      console.log("Group ID buscado:", AUTHORIZED_GROUP_ID);
-      
-      const tokenResponse = await msalInstance.acquireTokenSilent({
-        ...loginRequest,
-        account,
-        forceRefresh: false
-      });
-      
-      console.log("Token obtenido, haciendo llamada a Graph API...");
-
-      const response = await fetch(graphConfig.graphGroupsEndpoint, {
-        headers: {
-          Authorization: `Bearer ${tokenResponse.accessToken}`,
-        },
-      });
-
-      if (!response.ok) {
-        throw new Error(`Graph API error: ${response.status}`);
-      }
-
-      const data = await response.json();
-      console.log("Grupos encontrados:", data.value.length);
-      
-      let isMember = false;
-      data.value.forEach((group: any) => {
-        console.log(`- ${group.displayName} (${group.id})`);
-        if (group.id === AUTHORIZED_GROUP_ID) {
-          isMember = true;
-          console.log("✅ Usuario es miembro del grupo appbip!");
-        }
-      });
-      
-      setIsAuthorized(isMember);
-      return isMember;
-      */
-      
       // Si no es @efc.com.pe, denegar acceso
       console.log("❌ Usuario no es de EFC");
       setIsAuthorized(false);
@@ -172,7 +147,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       
       // Si falla, intentar renovar el token
       try {
-        await msalInstance.acquireTokenRedirect(loginRequest);
+        await instance.acquireTokenRedirect(loginRequest);
       } catch (e) {
         console.error("Error obteniendo token:", e);
       }
@@ -184,7 +159,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const login = async () => {
     try {
       setError(null);
-      await msalInstance.loginRedirect(loginRequest);
+      if (msalInstance) {
+        await msalInstance.loginRedirect(loginRequest);
+      } else {
+        setError("MSAL no está inicializado");
+      }
     } catch (error) {
       console.error("Error en login:", error);
       setError("Error al iniciar sesión");
@@ -193,9 +172,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const logout = () => {
     localStorage.removeItem('user');
-    const account = msalInstance.getAllAccounts()[0];
-    if (account) {
-      msalInstance.logoutRedirect({ account });
+    if (msalInstance) {
+      const account = msalInstance.getAllAccounts()[0];
+      if (account) {
+        msalInstance.logoutRedirect({ account });
+      }
     }
   };
 
