@@ -1,11 +1,10 @@
+Dockerfile
+.dockerignore
 node_modules
+npm-debug.log
+README.md
 .next
 .git
 .gitignore
-Dockerfile
-docker-compose.yml
-README.md
-npm-debug.log
-yarn-error.log
 .env*
-.vscode 
+!.env.example
