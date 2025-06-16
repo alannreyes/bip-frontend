@@ -1,17 +1,37 @@
 "use client";
+import { useAuth } from "@/hooks/useAuth";
+import { useRouter } from "next/navigation";
+import { useEffect } from "react";
 import { AuthProvider } from "@/contexts/AuthContext";
-import { useEffect, useState } from "react";
 
-export function AuthWrapper({ children }: { children: React.ReactNode }) {
-  const [mounted, setMounted] = useState(false);
+function AuthGuard({ children }: { children: React.ReactNode }) {
+  const { user } = useAuth();
+  const router = useRouter();
 
   useEffect(() => {
-    setMounted(true);
-  }, []);
+    // Si el usuario no está definido (aún cargando) no hacemos nada.
+    if (user === undefined) return;
 
-  if (!mounted) {
-    return <>{children}</>;
+    // Si el usuario es null (carga finalizada, sin sesión), redirigir.
+    if (user === null) {
+      router.push("/login");
+    }
+  }, [user, router]);
+
+  // Mientras carga o si no hay usuario, no renderizar los hijos.
+  // Se puede poner un spinner aquí.
+  if (user === undefined || user === null) {
+    return <div>Loading...</div>;
   }
 
-  return <AuthProvider>{children}</AuthProvider>;
+  // Si hay usuario, renderizar el contenido protegido.
+  return <>{children}</>;
+}
+
+export function AuthWrapper({ children }: { children: React.ReactNode }) {
+  return (
+    <AuthProvider>
+      <AuthGuard>{children}</AuthGuard>
+    </AuthProvider>
+  );
 }
