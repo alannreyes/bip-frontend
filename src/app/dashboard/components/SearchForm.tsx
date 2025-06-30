@@ -8,12 +8,9 @@ import ExportButton from "./ExportButton";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 
-// Define el tipo manualmente
-interface SearchFormData {
-  query: string;
-  limit: number;
-  segment: "premium" | "economy" | "standard";
-}
+// Inferir el tipo del schema de Zod
+import { z } from "zod";
+type SearchFormData = z.infer<typeof searchSchema>;
 
 export default function SearchForm() {
   const { register, handleSubmit, formState: { errors } } = useForm<SearchFormData>({
