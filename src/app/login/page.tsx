@@ -89,7 +89,7 @@ export default function LoginPage() {
               priority
             />
             <h1 className="text-2xl font-bold text-gray-900 mb-2">
-              Buscador Inteligente de Productos
+              Buscador Inteligente de SKU
             </h1>
             <p className="text-sm text-gray-600">
               Sistema de búsqueda semántica con IA

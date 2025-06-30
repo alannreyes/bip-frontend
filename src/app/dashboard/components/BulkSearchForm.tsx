@@ -10,6 +10,7 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Button } from "@/components/ui/button";
 import { useState } from "react";
+import { ProcessedResult } from "@/lib/validation";
 
 // Define el tipo manualmente en lugar de inferirlo
 interface BulkFormData {
@@ -20,7 +21,7 @@ interface BulkFormData {
 
 export default function BulkSearchForm() {
   const { register, handleSubmit, formState: { errors }, watch, setValue } = useForm<BulkFormData>({
-    resolver: zodResolver(bulkSchema) as any, // Forzar el tipo para evitar conflicto
+    resolver: zodResolver(bulkSchema),
     defaultValues: { 
       queries: "",
       limit: 10,
@@ -28,7 +29,7 @@ export default function BulkSearchForm() {
     },
   });
   
-  const { loading, results, error, search, setResults } = useProductSearch();
+  const { results, error, search, setResults } = useProductSearch();
   const [progress, setProgress] = useState(0);
   const [isSearching, setIsSearching] = useState(false);
   
@@ -42,7 +43,7 @@ export default function BulkSearchForm() {
     setIsSearching(true);
     
     const lines = data.queries.split("\n").filter(Boolean).slice(0, 500);
-    let allResults: any[] = [];
+    let allResults: ProcessedResult[] = [];
     
     for (let i = 0; i < lines.length; i++) {
       try {
@@ -52,13 +53,8 @@ export default function BulkSearchForm() {
           segment: data.segment 
         });
         
-        // Agregar la consulta a cada resultado
-        const resultsWithQuery = searchResults.map((result: any) => ({
-          consulta: lines[i], // Primera columna con el término buscado
-          ...result
-        }));
-        
-        allResults = [...allResults, ...resultsWithQuery];
+        // searchResults ya viene como ProcessedResult[] del hook
+        allResults = [...allResults, ...searchResults];
         
       } catch (error) {
         console.error(`Error buscando: ${lines[i]}`, error);

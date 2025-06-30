@@ -2,16 +2,12 @@
 import { createContext, useContext, useState, useEffect, ReactNode } from "react";
 import { 
   AccountInfo,
-  AuthenticationResult,
-  EventType,
-  EventMessage,
-  InteractionStatus,
   PublicClientApplication
 } from "@azure/msal-browser";
-import { getMsalInstance, loginRequest, graphConfig } from "@/lib/auth-config";
+import { getMsalInstance, loginRequest } from "@/lib/auth-config";
 import { useRouter, usePathname } from "next/navigation";
 
-const AUTHORIZED_GROUP_ID = process.env.NEXT_PUBLIC_AUTHORIZED_GROUP_ID!;
+// const AUTHORIZED_GROUP_ID = process.env.NEXT_PUBLIC_AUTHORIZED_GROUP_ID;
 
 interface AuthContextType {
   user: AccountInfo | null;

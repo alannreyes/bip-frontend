@@ -16,7 +16,7 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "EFC - Buscador Inteligente de Productos",
+  title: "EFC - Buscador Inteligente de SKU",
   description: "Sistema de búsqueda semántica de productos con IA",
   icons: {
     icon: "/images/logoefc.png",
@@ -51,7 +51,7 @@ export default function RootLayout({
                 <div className="border-l border-gray-300 h-8 mx-2"></div>
                 <div>
                   <h1 className="text-xl font-semibold text-gray-900">
-                    Buscador Inteligente de Productos
+                    Buscador Inteligente de SKU
                   </h1>
                   <p className="text-xs text-gray-500">Sistema de búsqueda semántica</p>
                 </div>

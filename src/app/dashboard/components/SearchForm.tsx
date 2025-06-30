@@ -17,7 +17,7 @@ interface SearchFormData {
 
 export default function SearchForm() {
   const { register, handleSubmit, formState: { errors } } = useForm<SearchFormData>({
-    resolver: zodResolver(searchSchema) as any, // Forzar el tipo
+    resolver: zodResolver(searchSchema),
     defaultValues: { 
       query: "",
       limit: 10, // Cambiado de 5 a 10 para coincidir con el schema
@@ -25,18 +25,11 @@ export default function SearchForm() {
     },
   });
   
-  const { loading, results, error, search, setResults } = useProductSearch();
+  const { loading, results, error, search } = useProductSearch();
   
   const handleSearch = async (data: SearchFormData) => {
-    const searchResults = await search(data);
-    
-    // Agregar la consulta a cada resultado
-    const resultsWithQuery = searchResults.map((result: any) => ({
-      consulta: data.query,
-      ...result
-    }));
-    
-    setResults(resultsWithQuery);
+    // El hook ya procesa la respuesta y retorna ProcessedResult[]
+    await search(data);
   };
   
   return (

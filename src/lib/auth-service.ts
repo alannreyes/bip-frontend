@@ -1,5 +1,4 @@
 // lib/auth-service.ts
-import { cache } from 'react';
 
 const AUTHORIZED_GROUP = "appbip";
 const CACHE_DURATION = 5 * 60 * 1000; // 5 minutos
