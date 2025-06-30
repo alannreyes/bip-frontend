@@ -4,8 +4,8 @@ RUN apk add --no-cache libc6-compat
 WORKDIR /app
 
 # Copiar archivos de dependencias
-COPY package.json package-lock.json* ./
-RUN npm ci
+COPY package.json ./
+RUN npm install
 
 # Etapa de construcción
 FROM node:20-alpine AS builder
@@ -33,8 +33,8 @@ RUN npm run build
 FROM node:20-alpine AS runner
 WORKDIR /app
 
-ENV NODE_ENV production
-ENV NEXT_TELEMETRY_DISABLED 1
+ENV NODE_ENV=production
+ENV NEXT_TELEMETRY_DISABLED=1
 
 # Crear usuario no-root
 RUN addgroup --system --gid 1001 nodejs
@@ -49,7 +49,7 @@ USER nextjs
 
 EXPOSE 3005
 
-ENV PORT 3005
-ENV HOSTNAME "0.0.0.0"
+ENV PORT=3005
+ENV HOSTNAME="0.0.0.0"
 
 CMD ["node", "server.js"]
