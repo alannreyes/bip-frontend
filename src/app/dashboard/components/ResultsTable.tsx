@@ -38,6 +38,11 @@ export default function ResultsTable({ data }: ResultsTableProps) {
   const getCellContent = (row: ProcessedResult, column: { key: string; label: string; isCode: boolean }) => {
     const value = row[column.key as keyof ProcessedResult];
     
+    // Skip boostSummary as it's metadata, not displayable content
+    if (column.key === 'boostSummary') {
+      return null;
+    }
+    
     if (column.isCode && typeof value === 'string' && value) {
       const colorClass = getCodeColorClass(value, row.boostSummary);
       return (
@@ -50,7 +55,7 @@ export default function ResultsTable({ data }: ResultsTableProps) {
       );
     }
     
-    return <span className="text-gray-700">{value}</span>;
+    return <span className="text-gray-700">{String(value || '')}</span>;
   };
 
   return (
