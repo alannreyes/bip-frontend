@@ -5,7 +5,12 @@ export async function POST(request: NextRequest) {
     const body = await request.json();
     const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://192.168.2.6:4000';
     
-    const response = await fetch(`${API_URL}/search`, {
+    // Si la URL ya incluye /search, no agregarlo de nuevo
+    const searchUrl = API_URL.endsWith('/search') ? API_URL : `${API_URL}/search`;
+    
+    console.log('🔍 API Request:', { searchUrl, body });
+    
+    const response = await fetch(searchUrl, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -16,8 +21,16 @@ export async function POST(request: NextRequest) {
     const data = await response.json();
 
     if (!response.ok) {
+      console.error('❌ API Error:', response.status, data);
       throw new Error(`API Error: ${response.status}`);
     }
+
+    console.log('✅ API Response sample:', { 
+      hasQueryInfo: !!data.query_info,
+      hasSelectedProduct: !!data.selected_product,
+      alternativesCount: data.alternatives?.length || 0,
+      hasBoostSummary: !!data.boost_summary
+    });
 
     return NextResponse.json(data);
     
