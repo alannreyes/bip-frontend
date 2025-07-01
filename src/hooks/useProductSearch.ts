@@ -24,12 +24,46 @@ export function useProductSearch() {
         throw new Error(data.error || 'Error en la búsqueda');
       }
 
-      // Procesar la nueva respuesta enriquecida
-      const processedResult = processApiResponse(data as ApiResponse, params.query);
-      setResults([processedResult]);
-      return [processedResult];
+      console.log('🔍 Hook received data:', data);
+
+      // Verificar si es la nueva API enriquecida o la anterior
+      if (data.query_info && data.alternatives && data.boost_summary) {
+        console.log('✅ Processing enriched API response');
+        const processedResult = processApiResponse(data as ApiResponse, params.query);
+        setResults([processedResult]);
+        return [processedResult];
+      } else {
+        console.log('⚠️ Falling back to legacy API format');
+        // Fallback para API anterior (formato array)
+        const legacyResults = Array.isArray(data) ? data : [data];
+        const processedResults = legacyResults.map((result: any) => ({
+          consulta: params.query,
+          codigoRecomendado: '',
+          descripcionRecomendada: '',
+          codigo1: result.codigo || '',
+          descripcion1: result.descripcion || '',
+          codigo2: '', descripcion2: '', codigo3: '', descripcion3: '',
+          codigo4: '', descripcion4: '', codigo5: '', descripcion5: '',
+          codigo6: '', descripcion6: '', codigo7: '', descripcion7: '',
+          codigo8: '', descripcion8: '', codigo9: '', descripcion9: '',
+          codigo10: '', descripcion10: '',
+          boostSummary: { 
+            products_with_stock: [], 
+            products_with_pricing: [], 
+            segment_matches: [], 
+            boost_weights_used: {
+              segmentPreferred: 1, segmentCompatible: 1, stock: 1, 
+              costAgreement: 1, brandExact: 1, modelExact: 1, sizeExact: 1
+            }
+          }
+        }));
+        setResults(processedResults);
+        return processedResults;
+      }
     } catch (e: unknown) {
-      setError(e instanceof Error ? e.message : "Error en la búsqueda");
+      console.error('❌ Search error:', e);
+      const errorMessage = e instanceof Error ? e.message : "Error en la búsqueda";
+      setError(errorMessage);
       return [];
     } finally {
       setLoading(false);
