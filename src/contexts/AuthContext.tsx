@@ -1,24 +1,8 @@
 "use client";
-import { createContext, useContext, ReactNode, useEffect, useState } from "react";
-import { PublicClientApplication, AccountInfo } from "@azure/msal-browser";
-import { msalConfig, loginRequest } from "@/lib/auth-config";
-
-// Crear instancia única de MSAL
-let msalInstance: PublicClientApplication | null = null;
-
-function getMsalInstance(): PublicClientApplication {
-  if (typeof window === 'undefined') {
-    throw new Error('MSAL can only be used in the browser');
-  }
-  
-  if (!msalInstance) {
-    msalInstance = new PublicClientApplication(msalConfig);
-  }
-  return msalInstance;
-}
+import { createContext, useContext, ReactNode, useState, useEffect } from "react";
 
 interface AuthContextType {
-  user: AccountInfo | null;
+  user: { email: string } | null;
   isAuthenticated: boolean;
   isAuthorized: boolean;
   isLoading: boolean;
@@ -38,67 +22,41 @@ const AuthContext = createContext<AuthContextType>({
 });
 
 export function AuthProvider({ children }: { children: ReactNode }) {
-  const [user, setUser] = useState<AccountInfo | null>(null);
+  const [user, setUser] = useState<{ email: string } | null>(null);
   const [isLoading, setIsLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    const initMsal = async () => {
+    // Simulación simple: verificar si hay un usuario en localStorage
+    const savedUser = localStorage.getItem('simpleAuth');
+    if (savedUser) {
       try {
-        if (typeof window === 'undefined') {
-          setIsLoading(false);
-          return;
-        }
-
-        const instance = getMsalInstance();
-        await instance.initialize();
-        
-        // Handle redirect response
-        const response = await instance.handleRedirectPromise();
-        
-        if (response && response.account) {
-          setUser(response.account);
-        } else {
-          // Check for existing accounts
-          const accounts = instance.getAllAccounts();
-          if (accounts.length > 0) {
-            setUser(accounts[0]);
-          }
-        }
-      } catch (err) {
-        console.error('MSAL initialization error:', err);
-        setError(err instanceof Error ? err.message : 'MSAL initialization failed');
-      } finally {
-        setIsLoading(false);
+        const parsed = JSON.parse(savedUser);
+        setUser(parsed);
+      } catch (e) {
+        localStorage.removeItem('simpleAuth');
       }
-    };
-
-    initMsal();
+    }
+    setIsLoading(false);
   }, []);
 
   const isAuthenticated = !!user;
-  const isAuthorized = user?.username?.toLowerCase().endsWith('@efc.com.pe') ?? false;
+  const isAuthorized = user?.email?.toLowerCase().endsWith('@efc.com.pe') ?? false;
 
   const login = async () => {
-    try {
-      setError(null);
-      const instance = getMsalInstance();
-      await instance.loginRedirect(loginRequest);
-    } catch (err) {
-      console.error("Login error:", err);
-      setError(err instanceof Error ? err.message : 'Login failed');
+    // Simulación simple: pedir email y validar dominio
+    const email = prompt('Ingresa tu email EFC:');
+    if (email && email.toLowerCase().endsWith('@efc.com.pe')) {
+      const userData = { email };
+      setUser(userData);
+      localStorage.setItem('simpleAuth', JSON.stringify(userData));
+    } else {
+      alert('Solo usuarios @efc.com.pe pueden acceder');
     }
   };
 
   const logout = () => {
-    try {
-      const instance = getMsalInstance();
-      if (user) {
-        instance.logoutRedirect({ account: user });
-      }
-    } catch (err) {
-      console.error("Logout error:", err);
-    }
+    setUser(null);
+    localStorage.removeItem('simpleAuth');
   };
 
   return (
@@ -110,7 +68,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         isLoading,
         login,
         logout,
-        error,
+        error: null,
       }}
     >
       {children}
