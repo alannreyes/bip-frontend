@@ -5,28 +5,26 @@ import { useEffect } from "react";
 import { AuthProvider } from "@/contexts/AuthContext";
 
 function AuthGuard({ children }: { children: React.ReactNode }) {
-  const { user, isLoading, error } = useAuth();
+  const { user, isAuthenticated, isAuthorized, isLoading, error } = useAuth();
   const router = useRouter();
   const pathname = usePathname();
 
   useEffect(() => {
-    console.log("🔍 AuthGuard state:", { user, isLoading, error, pathname });
-    
-    // Si estamos en /login, no proteger con autenticación
-    if (pathname === '/login' || pathname.startsWith('/login')) {
-      console.log("🚫 Login page - skipping auth protection");
+    // Solo ejecutar en rutas protegidas
+    if (pathname === '/login' || pathname.startsWith('/login') || pathname === '/auth/callback') {
       return;
     }
-    
-    // Si el usuario no está definido (aún cargando) no hacemos nada.
-    if (user === undefined) return;
 
-    // Si el usuario es null (carga finalizada, sin sesión), redirigir.
-    if (user === null) {
-      console.log("🔄 Redirecting to login");
+    // Si no está autenticado, redirigir a login
+    if (!isLoading && !isAuthenticated) {
       router.push("/login");
     }
-  }, [user, router, isLoading, error, pathname]);
+  }, [isAuthenticated, isLoading, pathname, router]);
+
+  // Si estamos en páginas públicas, renderizar siempre
+  if (pathname === '/login' || pathname.startsWith('/login') || pathname === '/auth/callback') {
+    return <>{children}</>;
+  }
 
   // Mostrar error si existe
   if (error) {
@@ -46,27 +44,61 @@ function AuthGuard({ children }: { children: React.ReactNode }) {
     );
   }
 
-  // Si estamos en /login, renderizar siempre (sin protección)
-  if (pathname === '/login' || pathname.startsWith('/login')) {
-    return <>{children}</>;
-  }
-
-  // Mientras carga o si no hay usuario, no renderizar los hijos.
-  if (isLoading || user === undefined || user === null) {
+  // Mientras MSAL está cargando
+  if (isLoading) {
     return (
       <div className="flex min-h-screen items-center justify-center">
         <div className="text-center">
           <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-gray-900 mx-auto"></div>
           <p className="mt-4">Verificando autenticación...</p>
-          <p className="mt-2 text-sm text-gray-500">
-            {isLoading ? "Conectando con Microsoft..." : "Redirigiendo..."}
-          </p>
         </div>
       </div>
     );
   }
 
-  // Si hay usuario, renderizar el contenido protegido.
+  // Si no está autenticado, mostrar loading mientras redirige
+  if (!isAuthenticated) {
+    return (
+      <div className="flex min-h-screen items-center justify-center">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-gray-900 mx-auto"></div>
+          <p className="mt-4">Redirigiendo a login...</p>
+        </div>
+      </div>
+    );
+  }
+
+  // Si está autenticado pero no autorizado
+  if (isAuthenticated && !isAuthorized) {
+    return (
+      <div className="flex min-h-screen items-center justify-center bg-gray-50 p-4">
+        <div className="w-full max-w-md">
+          <div className="bg-white p-8 rounded-lg shadow-md text-center">
+            <div className="mb-6 p-4 bg-red-50 rounded-md border border-red-200">
+              <h2 className="text-lg font-semibold text-red-800 mb-2">
+                Acceso Denegado
+              </h2>
+              <p className="text-sm text-red-700">
+                No tienes permisos para acceder a esta aplicación.
+              </p>
+              <p className="text-xs text-red-600 mt-2">
+                Solo usuarios con correo @efc.com.pe tienen acceso.
+              </p>
+            </div>
+            
+            <button 
+              onClick={() => router.push('/login')} 
+              className="px-4 py-2 bg-blue-500 text-white rounded"
+            >
+              Volver a Login
+            </button>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  // Si está autenticado y autorizado, renderizar contenido
   return <>{children}</>;
 }
 
