@@ -1,15 +1,22 @@
 "use client";
 import { useAuth } from "@/contexts/AuthContext";
-import { useRouter } from "next/navigation";
+import { useRouter, usePathname } from "next/navigation";
 import { useEffect } from "react";
 import { AuthProvider } from "@/contexts/AuthContext";
 
 function AuthGuard({ children }: { children: React.ReactNode }) {
   const { user, isLoading, error } = useAuth();
   const router = useRouter();
+  const pathname = usePathname();
 
   useEffect(() => {
-    console.log("🔍 AuthGuard state:", { user, isLoading, error });
+    console.log("🔍 AuthGuard state:", { user, isLoading, error, pathname });
+    
+    // Si estamos en /login, no proteger con autenticación
+    if (pathname === '/login' || pathname.startsWith('/login')) {
+      console.log("🚫 Login page - skipping auth protection");
+      return;
+    }
     
     // Si el usuario no está definido (aún cargando) no hacemos nada.
     if (user === undefined) return;
@@ -19,7 +26,7 @@ function AuthGuard({ children }: { children: React.ReactNode }) {
       console.log("🔄 Redirecting to login");
       router.push("/login");
     }
-  }, [user, router, isLoading, error]);
+  }, [user, router, isLoading, error, pathname]);
 
   // Mostrar error si existe
   if (error) {
@@ -37,6 +44,11 @@ function AuthGuard({ children }: { children: React.ReactNode }) {
         </div>
       </div>
     );
+  }
+
+  // Si estamos en /login, renderizar siempre (sin protección)
+  if (pathname === '/login' || pathname.startsWith('/login')) {
+    return <>{children}</>;
   }
 
   // Mientras carga o si no hay usuario, no renderizar los hijos.
