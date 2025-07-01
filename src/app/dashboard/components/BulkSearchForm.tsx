@@ -12,9 +12,12 @@ import { Button } from "@/components/ui/button";
 import { useState } from "react";
 import { ProcessedResult } from "@/lib/validation";
 
-// Inferir el tipo del schema de Zod
-import { z } from "zod";
-type BulkFormData = z.infer<typeof bulkSchema>;
+// Tipo para el formulario (antes del transform)
+type BulkFormData = {
+  queries: string;
+  limit: string | number;
+  segment: "premium" | "economy" | "standard";
+};
 
 export default function BulkSearchForm() {
   const { register, handleSubmit, formState: { errors }, watch, setValue } = useForm<BulkFormData>({
