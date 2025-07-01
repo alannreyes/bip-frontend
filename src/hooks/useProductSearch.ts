@@ -6,7 +6,7 @@ export function useProductSearch() {
   const [results, setResults] = useState<ProcessedResult[]>([]);
   const [error, setError] = useState<string | null>(null);
 
-  const search = async (params: { query: string; limit: number; segment: string }) => {
+  const search = async (params: { query: string; limit: string; segment: string }) => {
     setLoading(true);
     setError(null);
     try {

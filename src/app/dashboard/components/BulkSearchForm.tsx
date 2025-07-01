@@ -151,7 +151,7 @@ export default function BulkSearchForm() {
               min={1}
               max={100}
               className="rounded-lg border-gray-300 focus:border-[#8DC63F] focus:ring-[#8DC63F]"
-              {...register("limit", { valueAsNumber: true })}
+              {...register("limit")}
             />
             {errors.limit && <p className="text-red-500 text-xs mt-1">{errors.limit.message}</p>}
           </div>
