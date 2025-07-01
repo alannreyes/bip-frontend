@@ -5,23 +5,53 @@ import { useEffect } from "react";
 import { AuthProvider } from "@/contexts/AuthContext";
 
 function AuthGuard({ children }: { children: React.ReactNode }) {
-  const { user } = useAuth();
+  const { user, isLoading, error } = useAuth();
   const router = useRouter();
 
   useEffect(() => {
+    console.log("🔍 AuthGuard state:", { user, isLoading, error });
+    
     // Si el usuario no está definido (aún cargando) no hacemos nada.
     if (user === undefined) return;
 
     // Si el usuario es null (carga finalizada, sin sesión), redirigir.
     if (user === null) {
+      console.log("🔄 Redirecting to login");
       router.push("/login");
     }
-  }, [user, router]);
+  }, [user, router, isLoading, error]);
+
+  // Mostrar error si existe
+  if (error) {
+    return (
+      <div className="flex min-h-screen items-center justify-center">
+        <div className="text-center">
+          <div className="text-red-500 mb-4">Error de autenticación</div>
+          <div className="text-sm text-gray-600 mb-4">{error}</div>
+          <button 
+            onClick={() => router.push('/login')} 
+            className="px-4 py-2 bg-blue-500 text-white rounded"
+          >
+            Ir a Login
+          </button>
+        </div>
+      </div>
+    );
+  }
 
   // Mientras carga o si no hay usuario, no renderizar los hijos.
-  // Se puede poner un spinner aquí.
-  if (user === undefined || user === null) {
-    return <div>Loading...</div>;
+  if (isLoading || user === undefined || user === null) {
+    return (
+      <div className="flex min-h-screen items-center justify-center">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-gray-900 mx-auto"></div>
+          <p className="mt-4">Verificando autenticación...</p>
+          <p className="mt-2 text-sm text-gray-500">
+            {isLoading ? "Conectando con Microsoft..." : "Redirigiendo..."}
+          </p>
+        </div>
+      </div>
+    );
   }
 
   // Si hay usuario, renderizar el contenido protegido.

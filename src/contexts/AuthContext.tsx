@@ -41,20 +41,26 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     const initAuth = async () => {
       try {
-        console.log("Iniciando autenticación...");
+        console.log("🔄 Iniciando autenticación...");
         
         // Obtener instancia de MSAL
         const instance = getMsalInstance();
         if (!instance) {
-          console.log("MSAL no disponible en el servidor");
+          console.log("⚠️ MSAL no disponible en el servidor");
           setIsLoading(false);
           return;
         }
         
         setMsalInstance(instance);
         
-        // Esperar a que MSAL esté listo
-        await instance.initialize();
+        console.log("🔄 Inicializando MSAL...");
+        // Esperar a que MSAL esté listo con timeout
+        await Promise.race([
+          instance.initialize(),
+          new Promise((_, reject) => 
+            setTimeout(() => reject(new Error('MSAL timeout')), 10000)
+          )
+        ]);
         
         // Manejar la respuesta del redirect
         const response = await instance.handleRedirectPromise();
@@ -104,9 +110,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           }
         }
       } catch (error) {
-        console.error("Error en initAuth:", error);
-        setError("Error al inicializar autenticación");
+        console.error("❌ Error en initAuth:", error);
+        setError("Error al inicializar autenticación: " + (error instanceof Error ? error.message : 'Unknown error'));
+        // Si hay error, intentar continuar sin autenticación para no bloquear
+        router.push('/login');
       } finally {
+        console.log("✅ Finalizando inicialización de auth");
         setIsLoading(false);
       }
     };
