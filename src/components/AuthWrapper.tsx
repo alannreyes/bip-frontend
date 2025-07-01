@@ -1,25 +1,11 @@
 "use client";
 import { useAuth } from "@/contexts/AuthContext";
-import { useRouter, usePathname } from "next/navigation";
-import { useEffect } from "react";
+import { usePathname } from "next/navigation";
 import { AuthProvider } from "@/contexts/AuthContext";
 
 function AuthGuard({ children }: { children: React.ReactNode }) {
   const { user, isAuthenticated, isAuthorized, isLoading, error } = useAuth();
-  const router = useRouter();
   const pathname = usePathname();
-
-  useEffect(() => {
-    // Solo ejecutar en rutas protegidas
-    if (pathname === '/login' || pathname.startsWith('/login') || pathname === '/auth/callback') {
-      return;
-    }
-
-    // Si no está autenticado, redirigir a login
-    if (!isLoading && !isAuthenticated) {
-      router.push("/login");
-    }
-  }, [isAuthenticated, isLoading, pathname, router]);
 
   // Si estamos en páginas públicas, renderizar siempre
   if (pathname === '/login' || pathname.startsWith('/login') || pathname === '/auth/callback') {
@@ -33,12 +19,9 @@ function AuthGuard({ children }: { children: React.ReactNode }) {
         <div className="text-center">
           <div className="text-red-500 mb-4">Error de autenticación</div>
           <div className="text-sm text-gray-600 mb-4">{error}</div>
-          <button 
-            onClick={() => router.push('/login')} 
-            className="px-4 py-2 bg-blue-500 text-white rounded"
-          >
+          <a href="/login" className="px-4 py-2 bg-blue-500 text-white rounded">
             Ir a Login
-          </button>
+          </a>
         </div>
       </div>
     );
@@ -56,8 +39,11 @@ function AuthGuard({ children }: { children: React.ReactNode }) {
     );
   }
 
-  // Si no está autenticado, mostrar loading mientras redirige
+  // Si no está autenticado, redirigir a login (sin useRouter para evitar loops)
   if (!isAuthenticated) {
+    if (typeof window !== 'undefined') {
+      window.location.href = '/login';
+    }
     return (
       <div className="flex min-h-screen items-center justify-center">
         <div className="text-center">
@@ -86,12 +72,9 @@ function AuthGuard({ children }: { children: React.ReactNode }) {
               </p>
             </div>
             
-            <button 
-              onClick={() => router.push('/login')} 
-              className="px-4 py-2 bg-blue-500 text-white rounded"
-            >
+            <a href="/login" className="px-4 py-2 bg-blue-500 text-white rounded">
               Volver a Login
-            </button>
+            </a>
           </div>
         </div>
       </div>

@@ -1,21 +1,16 @@
 "use client";
-import { createContext, useContext, ReactNode } from "react";
-import { 
-  useMsal, 
-  useIsAuthenticated, 
-  useAccount,
-  MsalProvider,
-  AuthenticationResult,
-  AccountInfo
-} from "@azure/msal-react";
-import { PublicClientApplication } from "@azure/msal-browser";
+import { createContext, useContext, ReactNode, useEffect, useState } from "react";
+import { PublicClientApplication, AccountInfo } from "@azure/msal-browser";
 import { msalConfig, loginRequest } from "@/lib/auth-config";
-import { useRouter } from "next/navigation";
 
 // Crear instancia única de MSAL
 let msalInstance: PublicClientApplication | null = null;
 
-export function getMsalInstance(): PublicClientApplication {
+function getMsalInstance(): PublicClientApplication {
+  if (typeof window === 'undefined') {
+    throw new Error('MSAL can only be used in the browser');
+  }
+  
   if (!msalInstance) {
     msalInstance = new PublicClientApplication(msalConfig);
   }
@@ -42,53 +37,84 @@ const AuthContext = createContext<AuthContextType>({
   error: null,
 });
 
-function AuthProviderInner({ children }: { children: ReactNode }) {
-  const { instance, accounts } = useMsal();
-  const isAuthenticated = useIsAuthenticated();
-  const account = useAccount(accounts[0] || {});
-  const router = useRouter();
+export function AuthProvider({ children }: { children: ReactNode }) {
+  const [user, setUser] = useState<AccountInfo | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
-  // Verificar autorización basado en email
-  const isAuthorized = account?.username?.toLowerCase().endsWith('@efc.com.pe') ?? false;
+  useEffect(() => {
+    const initMsal = async () => {
+      try {
+        if (typeof window === 'undefined') {
+          setIsLoading(false);
+          return;
+        }
+
+        const instance = getMsalInstance();
+        await instance.initialize();
+        
+        // Handle redirect response
+        const response = await instance.handleRedirectPromise();
+        
+        if (response && response.account) {
+          setUser(response.account);
+        } else {
+          // Check for existing accounts
+          const accounts = instance.getAllAccounts();
+          if (accounts.length > 0) {
+            setUser(accounts[0]);
+          }
+        }
+      } catch (err) {
+        console.error('MSAL initialization error:', err);
+        setError(err instanceof Error ? err.message : 'MSAL initialization failed');
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    initMsal();
+  }, []);
+
+  const isAuthenticated = !!user;
+  const isAuthorized = user?.username?.toLowerCase().endsWith('@efc.com.pe') ?? false;
 
   const login = async () => {
     try {
+      setError(null);
+      const instance = getMsalInstance();
       await instance.loginRedirect(loginRequest);
-    } catch (error) {
-      console.error("Error en login:", error);
+    } catch (err) {
+      console.error("Login error:", err);
+      setError(err instanceof Error ? err.message : 'Login failed');
     }
   };
 
   const logout = () => {
-    if (account) {
-      instance.logoutRedirect({ account });
+    try {
+      const instance = getMsalInstance();
+      if (user) {
+        instance.logoutRedirect({ account: user });
+      }
+    } catch (err) {
+      console.error("Logout error:", err);
     }
   };
 
   return (
     <AuthContext.Provider
       value={{
-        user: account,
+        user,
         isAuthenticated,
         isAuthorized,
-        isLoading: false, // MSAL maneja el estado de carga internamente
+        isLoading,
         login,
         logout,
-        error: null,
+        error,
       }}
     >
       {children}
     </AuthContext.Provider>
-  );
-}
-
-export function AuthProvider({ children }: { children: ReactNode }) {
-  return (
-    <MsalProvider instance={getMsalInstance()}>
-      <AuthProviderInner>
-        {children}
-      </AuthProviderInner>
-    </MsalProvider>
   );
 }
 
