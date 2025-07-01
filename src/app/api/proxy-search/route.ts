@@ -15,8 +15,11 @@ export async function POST(request: NextRequest) {
       env_API_URL: process.env.NEXT_PUBLIC_API_URL
     });
     
-    // Probar diferentes formatos para compatibilidad
-    const requestBody = body;
+    // Asegurar que limit sea string para el backend
+    const requestBody = {
+      ...body,
+      limit: String(body.limit)
+    };
     
     console.log('📤 Sending to backend:', requestBody);
     

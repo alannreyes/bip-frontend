@@ -14,7 +14,7 @@ export const userSchema = z.object({
 
 export const searchSchema = z.object({
   query: z.string().min(1, "Campo requerido"),
-  limit: z.string().min(1, "Campo requerido"),
+  limit: z.union([z.string(), z.number()]).transform(val => String(val)),
   segment: z.enum(["premium", "economy", "standard"]),
 });
 
@@ -22,7 +22,7 @@ export const bulkSchema = z.object({
   queries: z.string().min(1, "Campo requerido").refine(val => val.split("\n").length <= 500, {
     message: "Máximo 500 líneas",
   }),
-  limit: z.string().min(1, "Campo requerido"),
+  limit: z.union([z.string(), z.number()]).transform(val => String(val)),
   segment: z.enum(["premium", "economy", "standard"]),
 });
 
