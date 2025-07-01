@@ -39,3 +39,13 @@ yarn-error.log*
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+
+# archivos antiguos/respaldo
+*old*
+*backup*
+*.bak
+
+# páginas no usadas
+/src/app/debug/
+/src/app/auth/
+/src/app/login/
